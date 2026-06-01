@@ -39,12 +39,13 @@ window.addEventListener("resize", resize);
 // 設定
 // =======================
 
-// 曲に合わせて少しゆっくり流れる速度
+// 画面を横断する速度
 const SCROLL_SECONDS = 8;
 
-// 全体
+// 全体時間
 const TOTAL_DURATION = 180;
 
+// サンプリング
 const SAMPLE_RATE = 120;
 
 let maxPoints = SAMPLE_RATE * SCROLL_SECONDS;
@@ -55,7 +56,7 @@ let startTime = performance.now();
 let lastSample = performance.now();
 
 // =====================================
-// 株価風のシナリオ生成
+// 補間関数
 // =====================================
 
 function smoothstep(x){
@@ -63,22 +64,25 @@ function smoothstep(x){
     return x * x * (3 - 2 * x);
 }
 
+// =====================================
+// グラフ生成
+// =====================================
+
 function generateValue(t){
 
     let value = 0;
 
     // ----------------------------
     // 0 ～ 70秒
-    // 小さな増減を繰り返す
+    // ゆっくりした株価風の上下
     // ----------------------------
     if(t < 70){
 
         value =
-            Math.sin(t * 0.7) * 10 +
-            Math.sin(t * 2.5) * 5 +
-            Math.sin(t * 6.0) * 2 +
-            (Math.random()-0.5) * 3;
-
+            Math.sin(t * 0.22) * 35 +
+            Math.sin(t * 0.55) * 15 +
+            Math.sin(t * 1.2) * 5 +
+            (Math.random()-0.5) * 2;
     }
 
     // ----------------------------
@@ -93,7 +97,6 @@ function generateValue(t){
             20 +
             smoothstep(p) * 280 +
             Math.sin(t * 4) * 8;
-
     }
 
     // ----------------------------
@@ -108,7 +111,6 @@ function generateValue(t){
             300 -
             smoothstep(p) * 420 +
             Math.sin(t * 4) * 10;
-
     }
 
     // ----------------------------
@@ -122,12 +124,11 @@ function generateValue(t){
             Math.sin(t * 0.8) * 8 +
             Math.sin(t * 4) * 3 +
             (Math.random()-0.5) * 2;
-
     }
 
     // ----------------------------
     // 95 ～ 110秒
-    // 元の水準へ復帰
+    // 元の水準へ戻る
     // ----------------------------
     else if(t < 110){
 
@@ -137,13 +138,11 @@ function generateValue(t){
             -120 +
             smoothstep(p) * 120 +
             Math.sin(t * 2) * 5;
-
     }
 
     // ----------------------------
     // 110秒以降
     // 激しい上下
-    // ただし最高値は超えない
     // ----------------------------
     else{
 
@@ -153,7 +152,7 @@ function generateValue(t){
             Math.sin(t * 7.0) * 20 +
             (Math.random()-0.5) * 15;
 
-        // 急騰時の頂点(約300)は超えない
+        // 急騰時の最高値は超えない
         value = Math.min(value, 220);
     }
 
@@ -182,11 +181,11 @@ function draw(){
         return;
     }
 
-    while(now - lastSample > 1000/SAMPLE_RATE){
+    while(now - lastSample > 1000 / SAMPLE_RATE){
 
         addSample();
 
-        lastSample += 1000/SAMPLE_RATE;
+        lastSample += 1000 / SAMPLE_RATE;
     }
 
     render();
@@ -201,13 +200,13 @@ function render(){
     const centerY = canvas.height / 2;
     const starX = canvas.width / 2;
 
-    // グラフ
+    // グラフ描画
     ctx.strokeStyle = "#000";
     ctx.lineWidth = 2;
 
     ctx.beginPath();
 
-    for(let i=0;i<points.length;i++){
+    for(let i = 0; i < points.length; i++){
 
         const x =
             starX -
@@ -226,7 +225,7 @@ function render(){
 
     ctx.stroke();
 
-    // 最新位置の★
+    // ★描画
     if(points.length){
 
         const latestY =
@@ -235,8 +234,8 @@ function render(){
 
         ctx.fillStyle = "#000";
 
-        // 32px → 160px (5倍)
-        ctx.font = "160px serif";
+        // 前回160px → 40px
+        ctx.font = "40px serif";
 
         ctx.textAlign = "center";
         ctx.textBaseline = "middle";
