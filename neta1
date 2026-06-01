@@ -1,0 +1,158 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Oscilloscope</title>
+
+<style>
+html,body{
+    margin:0;
+    width:100%;
+    height:100%;
+    overflow:hidden;
+    background:white;
+}
+
+canvas{
+    display:block;
+}
+</style>
+</head>
+<body>
+
+<canvas id="canvas"></canvas>
+
+<script>
+
+const canvas = document.getElementById("canvas");
+const ctx = canvas.getContext("2d");
+
+function resize(){
+    canvas.width = window.innerWidth;
+    canvas.height = window.innerHeight;
+}
+resize();
+window.addEventListener("resize", resize);
+
+// =======================
+// 設定
+// =======================
+
+// 2秒で画面横断（速度半分）
+const SCROLL_SECONDS = 2;
+
+// 3分で停止
+const TOTAL_DURATION = 180;
+
+// 1秒あたり記録する点数
+const SAMPLE_RATE = 120;
+
+// 表示点数
+let maxPoints = SAMPLE_RATE * SCROLL_SECONDS;
+
+let points = [];
+
+let startTime = performance.now();
+let lastSample = performance.now();
+
+function generateValue(t){
+
+    // 仮データ
+    return (
+        Math.sin(t * 2 * Math.PI * 1.2) * 150 +
+        Math.sin(t * 2 * Math.PI * 4.3) * 40 +
+        (Math.random()-0.5) * 20
+    );
+
+}
+
+function addSample(){
+
+    const t = (performance.now() - startTime) / 1000;
+
+    points.push(generateValue(t));
+
+    while(points.length > maxPoints){
+        points.shift();
+    }
+}
+
+function draw(){
+
+    const now = performance.now();
+
+    const elapsed = (now - startTime) / 1000;
+
+    if(elapsed >= TOTAL_DURATION){
+        render();
+        return;
+    }
+
+    while(now - lastSample > 1000/SAMPLE_RATE){
+
+        addSample();
+
+        lastSample += 1000/SAMPLE_RATE;
+    }
+
+    render();
+
+    requestAnimationFrame(draw);
+}
+
+function render(){
+
+    ctx.clearRect(0,0,canvas.width,canvas.height);
+
+    const centerY = canvas.height/2;
+    const starX = canvas.width / 2;
+
+    ctx.strokeStyle = "#000";
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+
+    for(let i=0;i<points.length;i++){
+
+        const x = starX - (points.length - 1 - i) / (maxPoints - 1) * starX;
+
+        const y = centerY - points[i];
+
+        if(i===0){
+            ctx.moveTo(x,y);
+        }else{
+            ctx.lineTo(x,y);
+        }
+    }
+
+    ctx.stroke();
+
+    // ★の描画（最新値）
+    if(points.length){
+
+        const latestY = centerY - points[points.length - 1];
+
+        ctx.fillStyle = "#000";
+        ctx.font = "32px serif";
+        ctx.textAlign = "center";
+        ctx.textBaseline = "middle";
+        ctx.fillText("★", starX, latestY);
+    }
+
+    // 中央線
+    ctx.strokeStyle = "#ddd";
+    ctx.lineWidth = 1;
+
+    ctx.beginPath();
+    ctx.moveTo(0,centerY);
+    ctx.lineTo(canvas.width,centerY);
+    ctx.stroke();
+
+}
+
+draw();
+
+</script>
+
+</body>
+</html>
