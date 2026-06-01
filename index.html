@@ -39,16 +39,14 @@ window.addEventListener("resize", resize);
 // 設定
 // =======================
 
-// 2秒で画面横断（速度半分）
-const SCROLL_SECONDS = 2;
+// 曲に合わせて少しゆっくり流れる速度
+const SCROLL_SECONDS = 8;
 
-// 3分で停止
+// 全体
 const TOTAL_DURATION = 180;
 
-// 1秒あたり記録する点数
 const SAMPLE_RATE = 120;
 
-// 表示点数
 let maxPoints = SAMPLE_RATE * SCROLL_SECONDS;
 
 let points = [];
@@ -56,15 +54,110 @@ let points = [];
 let startTime = performance.now();
 let lastSample = performance.now();
 
+// =====================================
+// 株価風のシナリオ生成
+// =====================================
+
+function smoothstep(x){
+    x = Math.max(0, Math.min(1, x));
+    return x * x * (3 - 2 * x);
+}
+
 function generateValue(t){
 
-    // 仮データ
-    return (
-        Math.sin(t * 2 * Math.PI * 1.2) * 150 +
-        Math.sin(t * 2 * Math.PI * 4.3) * 40 +
-        (Math.random()-0.5) * 20
-    );
+    let value = 0;
 
+    // ----------------------------
+    // 0 ～ 70秒
+    // 小さな増減を繰り返す
+    // ----------------------------
+    if(t < 70){
+
+        value =
+            Math.sin(t * 0.7) * 10 +
+            Math.sin(t * 2.5) * 5 +
+            Math.sin(t * 6.0) * 2 +
+            (Math.random()-0.5) * 3;
+
+    }
+
+    // ----------------------------
+    // 70 ～ 75秒
+    // 急上昇
+    // ----------------------------
+    else if(t < 75){
+
+        const p = (t - 70) / 5;
+
+        value =
+            20 +
+            smoothstep(p) * 280 +
+            Math.sin(t * 4) * 8;
+
+    }
+
+    // ----------------------------
+    // 75 ～ 80秒
+    // 急落
+    // ----------------------------
+    else if(t < 80){
+
+        const p = (t - 75) / 5;
+
+        value =
+            300 -
+            smoothstep(p) * 420 +
+            Math.sin(t * 4) * 10;
+
+    }
+
+    // ----------------------------
+    // 80 ～ 95秒
+    // 横ばい
+    // ----------------------------
+    else if(t < 95){
+
+        value =
+            -120 +
+            Math.sin(t * 0.8) * 8 +
+            Math.sin(t * 4) * 3 +
+            (Math.random()-0.5) * 2;
+
+    }
+
+    // ----------------------------
+    // 95 ～ 110秒
+    // 元の水準へ復帰
+    // ----------------------------
+    else if(t < 110){
+
+        const p = (t - 95) / 15;
+
+        value =
+            -120 +
+            smoothstep(p) * 120 +
+            Math.sin(t * 2) * 5;
+
+    }
+
+    // ----------------------------
+    // 110秒以降
+    // 激しい上下
+    // ただし最高値は超えない
+    // ----------------------------
+    else{
+
+        value =
+            Math.sin(t * 0.9) * 80 +
+            Math.sin(t * 2.7) * 50 +
+            Math.sin(t * 7.0) * 20 +
+            (Math.random()-0.5) * 15;
+
+        // 急騰時の頂点(約300)は超えない
+        value = Math.min(value, 220);
+    }
+
+    return value;
 }
 
 function addSample(){
@@ -105,20 +198,26 @@ function render(){
 
     ctx.clearRect(0,0,canvas.width,canvas.height);
 
-    const centerY = canvas.height/2;
+    const centerY = canvas.height / 2;
     const starX = canvas.width / 2;
 
+    // グラフ
     ctx.strokeStyle = "#000";
     ctx.lineWidth = 2;
+
     ctx.beginPath();
 
     for(let i=0;i<points.length;i++){
 
-        const x = starX - (points.length - 1 - i) / (maxPoints - 1) * starX;
+        const x =
+            starX -
+            (points.length - 1 - i) /
+            (maxPoints - 1) *
+            starX;
 
         const y = centerY - points[i];
 
-        if(i===0){
+        if(i === 0){
             ctx.moveTo(x,y);
         }else{
             ctx.lineTo(x,y);
@@ -127,15 +226,21 @@ function render(){
 
     ctx.stroke();
 
-    // ★の描画（最新値）
+    // 最新位置の★
     if(points.length){
 
-        const latestY = centerY - points[points.length - 1];
+        const latestY =
+            centerY -
+            points[points.length - 1];
 
         ctx.fillStyle = "#000";
-        ctx.font = "32px serif";
+
+        // 32px → 160px (5倍)
+        ctx.font = "160px serif";
+
         ctx.textAlign = "center";
         ctx.textBaseline = "middle";
+
         ctx.fillText("★", starX, latestY);
     }
 
@@ -144,10 +249,9 @@ function render(){
     ctx.lineWidth = 1;
 
     ctx.beginPath();
-    ctx.moveTo(0,centerY);
-    ctx.lineTo(canvas.width,centerY);
+    ctx.moveTo(0, centerY);
+    ctx.lineTo(canvas.width, centerY);
     ctx.stroke();
-
 }
 
 draw();
