@@ -3,19 +3,18 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Oscilloscope</title>
+<title>Oscilloscope Preview</title>
 
 <style>
-html,body{
-    margin:0;
-    width:100%;
-    height:100%;
-    overflow:hidden;
-    background:white;
+html, body {
+    margin: 0;
+    width: 100%;
+    height: 100%;
+    overflow: hidden;
+    background: white;
 }
-
-canvas{
-    display:block;
+canvas {
+    display: block;
 }
 </style>
 </head>
@@ -24,7 +23,6 @@ canvas{
 <canvas id="canvas"></canvas>
 
 <script>
-
 const canvas = document.getElementById("canvas");
 const ctx = canvas.getContext("2d");
 
@@ -39,222 +37,144 @@ window.addEventListener("resize", resize);
 // 設定
 // =======================
 
-// 画面を横断する速度
-const SCROLL_SECONDS = 8;
+const TOTAL_DURATION = 120; // 2分
+const BPM = 125;
+const BPM_FREQ = BPM / 60;
 
-// 全体時間
-const TOTAL_DURATION = 180;
+let startTime = 0;
+let started = false;
 
-// サンプリング
-const SAMPLE_RATE = 120;
+// =======================
+// Enterで開始
+// =======================
+window.addEventListener("keydown", (e)=>{
+    if(e.key === "Enter" && !started){
+        started = true;
+        startTime = performance.now();
+        draw();
+    }
+});
 
-let maxPoints = SAMPLE_RATE * SCROLL_SECONDS;
-
-let points = [];
-
-let startTime = performance.now();
-let lastSample = performance.now();
-
-// =====================================
-// 補間関数
-// =====================================
-
-function smoothstep(x){
-    x = Math.max(0, Math.min(1, x));
-    return x * x * (3 - 2 * x);
-}
-
-// =====================================
-// グラフ生成
-// =====================================
-
+// =======================
+// 波形生成
+// =======================
 function generateValue(t){
+    const h = canvas.height;
+    const bigRange = h * 0.35;
 
-    let value = 0;
+    const main = Math.sin(2 * Math.PI * BPM_FREQ * t) * bigRange * 0.7;
 
-    // ----------------------------
-    // 0 ～ 70秒
-    // ゆっくりした株価風の上下
-    // ----------------------------
-    if(t < 70){
+    const detail =
+        Math.sin(2 * Math.PI * BPM_FREQ * 2.3 * t) * bigRange * 0.25 +
+        Math.sin(2 * Math.PI * BPM_FREQ * 3.7 * t) * bigRange * 0.15;
 
-        value =
-            Math.sin(t * 0.22) * 35 +
-            Math.sin(t * 0.55) * 15 +
-            Math.sin(t * 1.2) * 5 +
-            (Math.random()-0.5) * 2;
-    }
+    const slow = Math.sin(t * 0.05) * h * 0.05;
 
-    // ----------------------------
-    // 70 ～ 75秒
-    // 急上昇
-    // ----------------------------
-    else if(t < 75){
-
-        const p = (t - 70) / 5;
-
-        value =
-            20 +
-            smoothstep(p) * 280 +
-            Math.sin(t * 4) * 8;
-    }
-
-    // ----------------------------
-    // 75 ～ 80秒
-    // 急落
-    // ----------------------------
-    else if(t < 80){
-
-        const p = (t - 75) / 5;
-
-        value =
-            300 -
-            smoothstep(p) * 420 +
-            Math.sin(t * 4) * 10;
-    }
-
-    // ----------------------------
-    // 80 ～ 95秒
-    // 横ばい
-    // ----------------------------
-    else if(t < 95){
-
-        value =
-            -120 +
-            Math.sin(t * 0.8) * 8 +
-            Math.sin(t * 4) * 3 +
-            (Math.random()-0.5) * 2;
-    }
-
-    // ----------------------------
-    // 95 ～ 110秒
-    // 元の水準へ戻る
-    // ----------------------------
-    else if(t < 110){
-
-        const p = (t - 95) / 15;
-
-        value =
-            -120 +
-            smoothstep(p) * 120 +
-            Math.sin(t * 2) * 5;
-    }
-
-    // ----------------------------
-    // 110秒以降
-    // 激しい上下
-    // ----------------------------
-    else{
-
-        value =
-            Math.sin(t * 0.9) * 80 +
-            Math.sin(t * 2.7) * 50 +
-            Math.sin(t * 7.0) * 20 +
-            (Math.random()-0.5) * 15;
-
-        // 急騰時の最高値は超えない
-        value = Math.min(value, 220);
-    }
-
-    return value;
+    return main + detail + slow;
 }
 
-function addSample(){
-
-    const t = (performance.now() - startTime) / 1000;
-
-    points.push(generateValue(t));
-
-    while(points.length > maxPoints){
-        points.shift();
-    }
-}
-
+// =======================
+// 描画ループ
+// =======================
 function draw(){
-
     const now = performance.now();
-
     const elapsed = (now - startTime) / 1000;
+    const elapsedClamped = Math.min(elapsed, TOTAL_DURATION);
 
-    if(elapsed >= TOTAL_DURATION){
-        render();
+    render(elapsedClamped);
+
+    if(elapsedClamped >= TOTAL_DURATION){
         return;
     }
-
-    while(now - lastSample > 1000 / SAMPLE_RATE){
-
-        addSample();
-
-        lastSample += 1000 / SAMPLE_RATE;
-    }
-
-    render();
 
     requestAnimationFrame(draw);
 }
 
-function render(){
-
-    ctx.clearRect(0,0,canvas.width,canvas.height);
+// =======================
+// 描画
+// =======================
+function render(elapsed){
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
 
     const centerY = canvas.height / 2;
-    const starX = canvas.width / 2;
+    const steps = 1000;
 
-    // グラフ描画
-    ctx.strokeStyle = "#000";
+    // 全体グラフ（薄い）
     ctx.lineWidth = 2;
-
+    ctx.strokeStyle = "#aaa";
     ctx.beginPath();
+    for(let i = 0; i <= steps; i++){
+        const p = i / steps;
+        const t = p * TOTAL_DURATION;
+        const x = p * canvas.width;
+        const y = centerY - generateValue(t);
 
-    for(let i = 0; i < points.length; i++){
-
-        const x =
-            starX -
-            (points.length - 1 - i) /
-            (maxPoints - 1) *
-            starX;
-
-        const y = centerY - points[i];
-
-        if(i === 0){
-            ctx.moveTo(x,y);
-        }else{
-            ctx.lineTo(x,y);
-        }
+        if(i === 0) ctx.moveTo(x, y);
+        else ctx.lineTo(x, y);
     }
-
     ctx.stroke();
 
-    // ★描画
-    if(points.length){
+    // ★の軌跡（黒）
+    const progress = elapsed / TOTAL_DURATION;
+    const trailSteps = Math.floor(steps * progress);
 
-        const latestY =
-            centerY -
-            points[points.length - 1];
+    ctx.strokeStyle = "#000";
+    ctx.beginPath();
+    for(let i = 0; i <= trailSteps; i++){
+        const p = i / steps;
+        const t = p * TOTAL_DURATION;
+        const x = p * canvas.width;
+        const y = centerY - generateValue(t);
+
+        if(i === 0) ctx.moveTo(x, y);
+        else ctx.lineTo(x, y);
+    }
+    ctx.stroke();
+
+    // ★（現在位置）
+    if(started){
+        const starX = (elapsed / TOTAL_DURATION) * canvas.width;
+        const starY = centerY - generateValue(elapsed);
 
         ctx.fillStyle = "#000";
-
-        // 前回160px → 40px
         ctx.font = "40px serif";
-
         ctx.textAlign = "center";
         ctx.textBaseline = "middle";
-
-        ctx.fillText("★", starX, latestY);
+        ctx.fillText("★", starX, starY);
     }
 
     // 中央線
     ctx.strokeStyle = "#ddd";
     ctx.lineWidth = 1;
-
     ctx.beginPath();
     ctx.moveTo(0, centerY);
     ctx.lineTo(canvas.width, centerY);
     ctx.stroke();
+
+    // タイマー
+    if(started){
+        const min = Math.floor(elapsed / 60).toString().padStart(2, "0");
+        const sec = Math.floor(elapsed % 60).toString().padStart(2, "0");
+
+        ctx.fillStyle = "#000";
+        ctx.font = "28px Arial";
+        ctx.textAlign = "right";
+        ctx.textBaseline = "top";
+        ctx.fillText(`${min}:${sec}`, canvas.width - 20, 20);
+    }
+
+    // 開始待機
+    if(!started){
+        ctx.fillStyle = "#000";
+        ctx.font = "48px sans-serif";
+        ctx.textAlign = "center";
+        ctx.textBaseline = "middle";
+        ctx.fillText("Press Enter", canvas.width / 2, canvas.height / 2);
+    }
 }
 
-draw();
-
+// 初期描画
+render(0);
 </script>
 
 </body>
