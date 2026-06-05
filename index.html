@@ -51,9 +51,10 @@ window.addEventListener("resize", resize);
 let startTime = null;
 let finished = false;
 
+// Y座標変換
 function getY(value) {
   const centerY = canvas.height / 2;
-  const scale = canvas.height * 0.01; // 振れ幅スケール
+  const scale = canvas.height * 0.01;
   return centerY - (value - 50) * scale;
 }
 
@@ -62,7 +63,7 @@ function renderFrame(progress) {
 
   const maxIndex = totalPoints - 1;
 
-  // なめらかなインデックス（小数）
+  // ★の滑らかなインデックス
   let floatIndex = progress * maxIndex;
   if (floatIndex < 0) floatIndex = 0;
   if (floatIndex > maxIndex) floatIndex = maxIndex;
@@ -71,16 +72,35 @@ function renderFrame(progress) {
   const i1 = Math.min(i0 + 1, maxIndex);
   const frac = floatIndex - i0;
 
-  // 上下位置をなめらかに補間
+  // 補間して滑らかに
   const v0 = waveform[i0];
   const v1 = waveform[i1];
   const vInterp = v0 * (1 - frac) + v1 * frac;
 
-  // ★の描画（画面中央に固定し、上下運動のみ）
+  // ★の位置
   const starX = canvas.width / 2;
   const starY = getY(vInterp);
+
+  // ======== 背景の流れる折れ線グラフ ========
+  ctx.strokeStyle = "#000";
+  ctx.lineWidth = 2;
+  ctx.beginPath();
+
+  for (let i = 0; i < totalPoints; i++) {
+    // 波形を左へ流す
+    const x = ((i - floatIndex) * (canvas.width / totalPoints)) + starX;
+
+    const y = getY(waveform[i]);
+
+    if (i === 0) ctx.moveTo(x, y);
+    else ctx.lineTo(x, y);
+  }
+
+  ctx.stroke();
+
+  // ======== ★の描画（中央固定） ========
   ctx.fillStyle = "#000";
-  ctx.font = "30px sans-serif";
+  ctx.font = "40px sans-serif";
   ctx.textAlign = "center";
   ctx.textBaseline = "middle";
   ctx.fillText("★", starX, starY);
@@ -93,17 +113,16 @@ function animate(timestamp) {
   if (elapsed >= DURATION) {
     if (!finished) {
       finished = true;
-      renderFrame(1); // 最終位置で停止
+      renderFrame(1);
     }
     return;
   }
 
-  const progress = elapsed / DURATION; // 0〜1
+  const progress = elapsed / DURATION;
   renderFrame(progress);
   requestAnimationFrame(animate);
 }
 
-// アニメーション開始
 requestAnimationFrame(animate);
 </script>
 </body>
