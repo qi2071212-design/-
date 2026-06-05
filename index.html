@@ -49,7 +49,11 @@ resize();
 window.addEventListener("resize", resize);
 
 let startTime = null;
+let lastTimestamp = null;
 let finished = false;
+
+// ★の軌跡（紙が流れているように左へ流す）
+let trail = [];
 
 // Y座標変換
 function getY(value) {
@@ -58,7 +62,7 @@ function getY(value) {
   return centerY - (value - 50) * scale;
 }
 
-function renderFrame(progress) {
+function renderFrame(progress, dt) {
   ctx.clearRect(0, 0, canvas.width, canvas.height);
 
   const maxIndex = totalPoints - 1;
@@ -77,26 +81,35 @@ function renderFrame(progress) {
   const v1 = waveform[i1];
   const vInterp = v0 * (1 - frac) + v1 * frac;
 
-  // ★の位置
+  // ★の位置（中央固定）
   const starX = canvas.width / 2;
   const starY = getY(vInterp);
 
-  // ======== 背景の流れる折れ線グラフ ========
-  ctx.strokeStyle = "#000";
-  ctx.lineWidth = 2;
-  ctx.beginPath();
+  // ======== 軌跡を左へ流す（紙が流れているように） ========
+  const scrollSpeed = canvas.width / 5; // 1秒あたりのスクロール速度（適宜調整）
+  const dx = scrollSpeed * (dt / 1000);
 
-  for (let i = 0; i < totalPoints; i++) {
-    // 波形を左へ流す
-    const x = ((i - floatIndex) * (canvas.width / totalPoints)) + starX;
-
-    const y = getY(waveform[i]);
-
-    if (i === 0) ctx.moveTo(x, y);
-    else ctx.lineTo(x, y);
+  // 既存の軌跡を左へ移動
+  for (let p of trail) {
+    p.x -= dx;
   }
+  // 画面外に出た点を削除
+  trail = trail.filter(p => p.x > -50);
 
-  ctx.stroke();
+  // 新しい点を追加（現在の★の位置）
+  trail.push({ x: starX, y: starY });
+
+  // 軌跡を折れ線グラフとして描画
+  if (trail.length > 1) {
+    ctx.strokeStyle = "#000";
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+    ctx.moveTo(trail[0].x, trail[0].y);
+    for (let i = 1; i < trail.length; i++) {
+      ctx.lineTo(trail[i].x, trail[i].y);
+    }
+    ctx.stroke();
+  }
 
   // ======== ★の描画（中央固定） ========
   ctx.fillStyle = "#000";
@@ -108,18 +121,22 @@ function renderFrame(progress) {
 
 function animate(timestamp) {
   if (!startTime) startTime = timestamp;
+  if (!lastTimestamp) lastTimestamp = timestamp;
+
   const elapsed = timestamp - startTime;
+  const dt = timestamp - lastTimestamp;
+  lastTimestamp = timestamp;
 
   if (elapsed >= DURATION) {
     if (!finished) {
       finished = true;
-      renderFrame(1);
+      renderFrame(1, dt);
     }
     return;
   }
 
   const progress = elapsed / DURATION;
-  renderFrame(progress);
+  renderFrame(progress, dt);
   requestAnimationFrame(animate);
 }
 
