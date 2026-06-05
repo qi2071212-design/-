@@ -61,21 +61,33 @@ function getX(index) {
 function getY(value) {
   // 値を画面中央付近にマッピング
   const centerY = canvas.height / 2;
-  // 値の中心をだいたい50付近とみなし、上下にスケール
-  const scale = canvas.height * 0.01;
+  const scale = canvas.height * 0.01; // 振れ幅スケール
   return centerY - (value - 50) * scale;
 }
 
 function renderFrame(progress) {
   ctx.clearRect(0, 0, canvas.width, canvas.height);
 
-  // 現在のインデックス（0〜totalPoints-1）
   const maxIndex = totalPoints - 1;
-  let currentIndex = Math.floor(progress * maxIndex);
-  if (currentIndex < 0) currentIndex = 0;
-  if (currentIndex > maxIndex) currentIndex = maxIndex;
 
-  // ★の軌跡（★を始点として、先頭から現在位置までの線を描画）
+  // なめらかなインデックス（小数）
+  let floatIndex = progress * maxIndex;
+  if (floatIndex < 0) floatIndex = 0;
+  if (floatIndex > maxIndex) floatIndex = maxIndex;
+
+  const i0 = Math.floor(floatIndex);
+  const i1 = Math.min(i0 + 1, maxIndex);
+  const frac = floatIndex - i0;
+
+  // 線用の現在インデックス（整数）
+  const currentIndex = i0;
+
+  // ★の上下位置をなめらかに補間
+  const v0 = waveform[i0];
+  const v1 = waveform[i1];
+  const vInterp = v0 * (1 - frac) + v1 * frac;
+
+  // ★の軌跡（先頭から現在位置までの線を描画）
   ctx.strokeStyle = "#000";
   ctx.lineWidth = 2;
   ctx.beginPath();
@@ -91,9 +103,9 @@ function renderFrame(progress) {
   }
   ctx.stroke();
 
-  // ★の描画（黒色）
-  const starX = getX(currentIndex);
-  const starY = getY(waveform[currentIndex]);
+  // ★の描画（画面中央に固定し、上下運動のみ）
+  const starX = canvas.width / 2;
+  const starY = getY(vInterp);
   ctx.fillStyle = "#000";
   ctx.font = "30px sans-serif";
   ctx.textAlign = "center";
