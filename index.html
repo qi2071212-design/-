@@ -79,8 +79,8 @@ function renderFrame(progress, dt) {
   const starX = canvas.width / 2;
   const starY = getY(vInterp);
 
-  // ======== 軌跡を左へ流す ========
-  const scrollSpeed = canvas.width / 4; // 速度調整
+  // ======== 軌跡を左へ流す（速度を BPM43 相当に遅くした） ========
+  const scrollSpeed = canvas.width / 12;  // ← ここを遅くした（元は /4）
   const dx = scrollSpeed * (dt / 1000);
 
   // 既存の軌跡を左へ移動
