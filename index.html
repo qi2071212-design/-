@@ -5,7 +5,7 @@
 <title>Oscilloscope Animation</title>
 <style>
   body {
-    background: black;
+    background: white;
     margin: 0;
     overflow: hidden;
   }
@@ -18,7 +18,7 @@
 <canvas id="c"></canvas>
 
 <script>
-// ======== あなたの Excel 波形データ =========
+// ======== Excel 波形データ =========
 const waveform = [
 50,59,50,43,65,40,51,56,58,50,43,40,61,62,52,52,54,60,40,46,
 58,58,50,59,56,43,43,52,56,35,42,37,56,36,43,38,57,35,42,38,
@@ -31,8 +31,6 @@ const waveform = [
 // ======== 基本設定 =========
 const duration = 92 * 1000; // 92秒
 const totalPoints = waveform.length;
-const interval = duration / totalPoints; // 1点あたりの時間
-
 const canvas = document.getElementById("c");
 const ctx = canvas.getContext("2d");
 
@@ -43,11 +41,14 @@ function resize() {
 resize();
 window.onresize = resize;
 
+// 1点あたりの時間
+const interval = duration / totalPoints;
+
 // ★ の位置
 let index = 0;
 let lastTime = performance.now();
 
-// 波形の描画用バッファ
+// ★の軌跡（左へ流れる）
 let trail = [];
 
 function animate(t) {
@@ -59,32 +60,62 @@ function animate(t) {
     index++;
     if (index >= totalPoints) index = 0;
 
-    // 新しい点を trail に追加
-    trail.push(waveform[index]);
+    // ★のY座標を trail に追加
+    const y = valueToY(waveform[index]);
+    trail.push(y);
+
+    // trail の長さを画面幅に合わせる
     if (trail.length > canvas.width) trail.shift();
   }
 
-  // 描画
+  draw();
+}
+
+// 値 → Y座標変換
+function valueToY(v) {
+  // Excel値は 0〜100 程度 → キャンバス中央 ± 振幅
+  const center = canvas.height / 2;
+  const scale = canvas.height * 0.004; // 振幅調整
+  return center - (v - 50) * scale;
+}
+
+function draw() {
   ctx.clearRect(0, 0, canvas.width, canvas.height);
 
-  // 波形ライン
-  ctx.strokeStyle = "cyan";
-  ctx.lineWidth = 2;
+  // ======== 波形ライン（黒）========
+  ctx.strokeStyle = "black";
+  ctx.lineWidth = 3;
   ctx.beginPath();
 
   for (let i = 0; i < trail.length; i++) {
     const x = canvas.width - trail.length + i;
-    const y = canvas.height / 2 - (trail[i] - 50) * 3; 
+    const y = trail[i];
     if (i === 0) ctx.moveTo(x, y);
     else ctx.lineTo(x, y);
   }
   ctx.stroke();
 
-  // ★ の描画
-  const starY = canvas.height / 2 - (waveform[index] - 50) * 3;
-  ctx.fillStyle = "yellow";
-  ctx.font = "30px sans-serif";
-  ctx.fillText("★", canvas.width / 2, starY);
+  // ======== ★（黒）========
+  const starX = canvas.width / 2;
+  const starY = valueToY(waveform[index]);
+
+  ctx.fillStyle = "black";
+  ctx.font = "40px serif";
+  ctx.textAlign = "center";
+  ctx.textBaseline = "middle";
+  ctx.fillText("★", starX, starY);
+
+  // ======== 目盛り（非表示）========
+  // 100等分の計算だけ行う（描画しない）
+  const step = canvas.width / 100;
+  // for (let i = 0; i <= 100; i++) {
+  //   const x = i * step;
+  //   ctx.strokeStyle = "rgba(0,0,0,0)";
+  //   ctx.beginPath();
+  //   ctx.moveTo(x, 0);
+  //   ctx.lineTo(x, canvas.height);
+  //   ctx.stroke();
+  // }
 }
 
 animate();
