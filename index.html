@@ -20,17 +20,25 @@
 <script>
 // ======== Excel 波形データ =========
 const waveform = [
-50,59,50,43,65,40,51,56,58,50,43,40,61,62,52,52,54,60,40,46,
-58,58,50,59,56,43,43,52,56,35,42,37,56,36,43,38,57,35,42,38,
-57,35,42,37,57,56,50,45,52,46,50,46,65,40,68,41,70,43,68,41,
-69,40,70,40,70,40,71,39,56,46,60,45,63,43,99,3,3,3,3,3,3,3,
-3,3,3,3,5,7,8,60,43,70,40,73,39,75,32,78,34,75,32,78,30,80,
-32,80,32,80,30,80,30
+  50,59,50,43,65,40,51,56,58,50,
+  43,40,61,62,52,52,54,60,40,46,
+  58,58,50,59,56,43,43,52,56,35,
+  42,37,56,36,43,38,57,35,42,38,
+  57,35,42,37,57,56,50,45,52,46,
+  50,46,65,40,68,41,70,43,68,41,
+  69,40,70,40,70,40,71,39,56,46,
+  60,45,63,43,99,3,3,3,3,3,
+  3,3,3,3,3,3,5,7,8,60,
+  43,70,40,73,39,75,32,78,34,75,
+  32,78,30,80,32,80,32,80,30,80,
+  30
 ];
 
 // ======== 基本設定 =========
-const duration = 92 * 1000; // 92秒
+const DURATION = 92 * 1000; // 92秒
+const SEGMENTS = 100;       // 画面を横に100等分
 const totalPoints = waveform.length;
+
 const canvas = document.getElementById("c");
 const ctx = canvas.getContext("2d");
 
@@ -39,86 +47,79 @@ function resize() {
   canvas.height = window.innerHeight;
 }
 resize();
-window.onresize = resize;
+window.addEventListener("resize", resize);
 
-// 1点あたりの時間
-const interval = duration / totalPoints;
+let startTime = null;
+let finished = false;
 
-// ★ の位置
-let index = 0;
-let lastTime = performance.now();
-
-// ★の軌跡（左へ流れる）
-let trail = [];
-
-function animate(t) {
-  requestAnimationFrame(animate);
-
-  // 時間経過で次の点へ
-  if (t - lastTime >= interval) {
-    lastTime = t;
-    index++;
-    if (index >= totalPoints) index = 0;
-
-    // ★のY座標を trail に追加
-    const y = valueToY(waveform[index]);
-    trail.push(y);
-
-    // trail の長さを画面幅に合わせる
-    if (trail.length > canvas.width) trail.shift();
-  }
-
-  draw();
+function getX(index) {
+  // 100等分した目盛りに合わせてX座標を計算（目盛り自体は描画しない）
+  const stepX = canvas.width / SEGMENTS;
+  return stepX * index;
 }
 
-// 値 → Y座標変換
-function valueToY(v) {
-  // Excel値は 0〜100 程度 → キャンバス中央 ± 振幅
-  const center = canvas.height / 2;
-  const scale = canvas.height * 0.004; // 振幅調整
-  return center - (v - 50) * scale;
+function getY(value) {
+  // 値を画面中央付近にマッピング
+  const centerY = canvas.height / 2;
+  // 値の中心をだいたい50付近とみなし、上下にスケール
+  const scale = canvas.height * 0.01;
+  return centerY - (value - 50) * scale;
 }
 
-function draw() {
+function renderFrame(progress) {
   ctx.clearRect(0, 0, canvas.width, canvas.height);
 
-  // ======== 波形ライン（黒）========
-  ctx.strokeStyle = "black";
-  ctx.lineWidth = 3;
+  // 現在のインデックス（0〜totalPoints-1）
+  const maxIndex = totalPoints - 1;
+  let currentIndex = Math.floor(progress * maxIndex);
+  if (currentIndex < 0) currentIndex = 0;
+  if (currentIndex > maxIndex) currentIndex = maxIndex;
+
+  // ★の軌跡（★を始点として、先頭から現在位置までの線を描画）
+  ctx.strokeStyle = "#000";
+  ctx.lineWidth = 2;
   ctx.beginPath();
 
-  for (let i = 0; i < trail.length; i++) {
-    const x = canvas.width - trail.length + i;
-    const y = trail[i];
-    if (i === 0) ctx.moveTo(x, y);
-    else ctx.lineTo(x, y);
+  for (let i = 0; i <= currentIndex; i++) {
+    const x = getX(i);
+    const y = getY(waveform[i]);
+    if (i === 0) {
+      ctx.moveTo(x, y);
+    } else {
+      ctx.lineTo(x, y);
+    }
   }
   ctx.stroke();
 
-  // ======== ★（黒）========
-  const starX = canvas.width / 2;
-  const starY = valueToY(waveform[index]);
-
-  ctx.fillStyle = "black";
-  ctx.font = "40px serif";
+  // ★の描画（黒色）
+  const starX = getX(currentIndex);
+  const starY = getY(waveform[currentIndex]);
+  ctx.fillStyle = "#000";
+  ctx.font = "30px sans-serif";
   ctx.textAlign = "center";
   ctx.textBaseline = "middle";
   ctx.fillText("★", starX, starY);
-
-  // ======== 目盛り（非表示）========
-  // 100等分の計算だけ行う（描画しない）
-  const step = canvas.width / 100;
-  // for (let i = 0; i <= 100; i++) {
-  //   const x = i * step;
-  //   ctx.strokeStyle = "rgba(0,0,0,0)";
-  //   ctx.beginPath();
-  //   ctx.moveTo(x, 0);
-  //   ctx.lineTo(x, canvas.height);
-  //   ctx.stroke();
-  // }
 }
 
-animate();
+function animate(timestamp) {
+  if (!startTime) startTime = timestamp;
+  const elapsed = timestamp - startTime;
+
+  if (elapsed >= DURATION) {
+    if (!finished) {
+      finished = true;
+      renderFrame(1); // 最終位置で停止
+    }
+    return;
+  }
+
+  const progress = elapsed / DURATION; // 0〜1
+  renderFrame(progress);
+  requestAnimationFrame(animate);
+}
+
+// アニメーション開始
+requestAnimationFrame(animate);
 </script>
 </body>
 </html>
