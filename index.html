@@ -36,7 +36,6 @@ const waveform = [
 
 // ======== 基本設定 =========
 const DURATION = 92 * 1000; // 92秒
-const SEGMENTS = 100;       // 画面を横に100等分
 const totalPoints = waveform.length;
 
 const canvas = document.getElementById("c");
@@ -52,14 +51,7 @@ window.addEventListener("resize", resize);
 let startTime = null;
 let finished = false;
 
-function getX(index) {
-  // 100等分した目盛りに合わせてX座標を計算（目盛り自体は描画しない）
-  const stepX = canvas.width / SEGMENTS;
-  return stepX * index;
-}
-
 function getY(value) {
-  // 値を画面中央付近にマッピング
   const centerY = canvas.height / 2;
   const scale = canvas.height * 0.01; // 振れ幅スケール
   return centerY - (value - 50) * scale;
@@ -79,29 +71,10 @@ function renderFrame(progress) {
   const i1 = Math.min(i0 + 1, maxIndex);
   const frac = floatIndex - i0;
 
-  // 線用の現在インデックス（整数）
-  const currentIndex = i0;
-
-  // ★の上下位置をなめらかに補間
+  // 上下位置をなめらかに補間
   const v0 = waveform[i0];
   const v1 = waveform[i1];
   const vInterp = v0 * (1 - frac) + v1 * frac;
-
-  // ★の軌跡（先頭から現在位置までの線を描画）
-  ctx.strokeStyle = "#000";
-  ctx.lineWidth = 2;
-  ctx.beginPath();
-
-  for (let i = 0; i <= currentIndex; i++) {
-    const x = getX(i);
-    const y = getY(waveform[i]);
-    if (i === 0) {
-      ctx.moveTo(x, y);
-    } else {
-      ctx.lineTo(x, y);
-    }
-  }
-  ctx.stroke();
 
   // ★の描画（画面中央に固定し、上下運動のみ）
   const starX = canvas.width / 2;
