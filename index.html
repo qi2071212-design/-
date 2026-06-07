@@ -18,13 +18,16 @@
 <canvas id="c"></canvas>
 
 <script>
-// ======== 新しい waveform（修復済み）=========
+// ======== waveform（修復済み）=========
 const waveform = [
- 45,45,45,45,45,45,45,45,45,45,45,45,45,45,45,45,67,42,67,41,66,43,68,55,65,41,41,41,41,41,64,40,70,40,70
+ 45,45,45,45,45,45,45,45,45,45,
+ 45,45,45,45,45,45,45,45,45,45,
+ 45,67,42,67,41,66,43,68,55,65,
+ 41,41,41,41,41,64,40,70,40,70
 ];
 
 // ======== 基本設定 =========
-const DURATION = 160 * 1000; // 160秒
+const DURATION = 20 * 1000; // ★ 20秒に変更
 const totalPoints = waveform.length;
 
 const canvas = document.getElementById("c");
@@ -41,7 +44,7 @@ let startTime = null;
 let lastTimestamp = null;
 let finished = false;
 
-// ■ の軌跡（紙が流れているように左へ流す）
+// ■ の軌跡（紙が流れるように左へ流す）
 let trail = [];
 
 // Y座標変換
