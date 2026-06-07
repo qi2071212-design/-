@@ -18,11 +18,10 @@
 <canvas id="c"></canvas>
 
 <script>
-// ======== waveform をすべて 50 にした配列 =========
+// ======== 新しい waveform（修復済み）=========
 const waveform = [
-  50,50,50,50,50,50,50,50,50,50,
-  50,50,50,50,50,50,50,50,50,50,
-  50
+ 45,45,45,45,45,45,45,45,45,45,45,45,45,45,45,45,45,45,45,45,45,
+ 59,43,67,42,67,41,66,43,68,55,65,41,41,41,41,41,64,40,70,40,70
 ];
 
 // ======== 基本設定 =========
@@ -43,10 +42,10 @@ let startTime = null;
 let lastTimestamp = null;
 let finished = false;
 
-// ★の軌跡（紙が流れているように左へ流す）
+// ■ の軌跡（紙が流れているように左へ流す）
 let trail = [];
 
-// Y座標変換（50固定なので中央に固定される）
+// Y座標変換
 function getY(value) {
   const centerY = canvas.height / 2;
   const scale = canvas.height * 0.01;
@@ -58,7 +57,7 @@ function renderFrame(progress, dt) {
 
   const maxIndex = totalPoints - 1;
 
-  // ★の滑らかなインデックス
+  // なめらかなインデックス
   let floatIndex = progress * maxIndex;
   floatIndex = Math.max(0, Math.min(floatIndex, maxIndex));
 
@@ -66,14 +65,14 @@ function renderFrame(progress, dt) {
   const i1 = Math.min(i0 + 1, maxIndex);
   const frac = floatIndex - i0;
 
-  // 補間して滑らかに（全部50なので常に50）
+  // 補間して滑らかに
   const v0 = waveform[i0];
   const v1 = waveform[i1];
   const vInterp = v0 * (1 - frac) + v1 * frac;
 
-  // ●の位置（中央固定）
-  const starX = canvas.width / 2;
-  const starY = getY(vInterp);
+  // ■ の位置（中央固定）
+  const boxX = canvas.width / 2;
+  const boxY = getY(vInterp);
 
   // ======== 軌跡を左へ流す ========
   const scrollSpeed = canvas.width / 12;
@@ -82,7 +81,7 @@ function renderFrame(progress, dt) {
   for (let p of trail) p.x -= dx;
   trail = trail.filter(p => p.x > -50);
 
-  trail.push({ x: starX, y: starY });
+  trail.push({ x: boxX, y: boxY });
 
   // ======== 軌跡を折れ線グラフとして描画 ========
   if (trail.length > 1) {
@@ -96,11 +95,10 @@ function renderFrame(progress, dt) {
     ctx.stroke();
   }
 
-  // ======== ●の描画（赤い丸） ========
-  ctx.fillStyle = "red";
-  ctx.beginPath();
-  ctx.arc(starX, starY, 12, 0, Math.PI * 2);
-  ctx.fill();
+  // ======== ■ の描画（青い四角） ========
+  ctx.fillStyle = "blue";
+  const size = 20;
+  ctx.fillRect(boxX - size/2, boxY - size/2, size, size);
 }
 
 function animate(timestamp) {
