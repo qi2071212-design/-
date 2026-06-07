@@ -18,15 +18,16 @@
 <canvas id="c"></canvas>
 
 <script>
-// ======== 新しい waveform（整形済み）=========
+// ======== waveform（修復済み）=========
 const waveform = [
- 30,30,30,30,30,31,32,33,34,35,36,37,38,39,40,
- 67,42,67,41,66,43,68,55,65,
+ 45,45,45,45,45,45,45,45,45,45,
+ 45,45,45,45,45,45,45,45,45,45,
+ 45,67,42,67,41,66,43,68,55,65,
  41,41,41,41,41,64,40,70,40,70
 ];
 
 // ======== 基本設定 =========
-const DURATION = 20 * 1000; // 20秒
+const DURATION = 20 * 1000; // ★ 20秒に変更
 const totalPoints = waveform.length;
 
 const canvas = document.getElementById("c");
@@ -43,7 +44,7 @@ let startTime = null;
 let lastTimestamp = null;
 let finished = false;
 
-// 三角形の軌跡（紙が流れるように左へ流す）
+// ■ の軌跡（紙が流れるように左へ流す）
 let trail = [];
 
 // Y座標変換
@@ -71,9 +72,9 @@ function renderFrame(progress, dt) {
   const v1 = waveform[i1];
   const vInterp = v0 * (1 - frac) + v1 * frac;
 
-  // 三角形の位置（中央固定）
-  const triX = canvas.width / 2;
-  const triY = getY(vInterp);
+  // ■ の位置（中央固定）
+  const boxX = canvas.width / 2;
+  const boxY = getY(vInterp);
 
   // ======== 軌跡を左へ流す ========
   const scrollSpeed = canvas.width / 12;
@@ -82,7 +83,7 @@ function renderFrame(progress, dt) {
   for (let p of trail) p.x -= dx;
   trail = trail.filter(p => p.x > -50);
 
-  trail.push({ x: triX, y: triY });
+  trail.push({ x: boxX, y: boxY });
 
   // ======== 軌跡を折れ線グラフとして描画 ========
   if (trail.length > 1) {
@@ -96,15 +97,10 @@ function renderFrame(progress, dt) {
     ctx.stroke();
   }
 
-  // ======== 緑の三角形を描画 ========
-  const size = 22;
-  ctx.fillStyle = "green";
-  ctx.beginPath();
-  ctx.moveTo(triX, triY - size);          // 上
-  ctx.lineTo(triX - size, triY + size);   // 左下
-  ctx.lineTo(triX + size, triY + size);   // 右下
-  ctx.closePath();
-  ctx.fill();
+  // ======== ■ の描画（青い四角） ========
+  ctx.fillStyle = "blue";
+  const size = 20;
+  ctx.fillRect(boxX - size/2, boxY - size/2, size, size);
 }
 
 function animate(timestamp) {
@@ -132,3 +128,4 @@ requestAnimationFrame(animate);
 </script>
 </body>
 </html>
+
